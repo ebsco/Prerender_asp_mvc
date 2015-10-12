@@ -24,12 +24,10 @@ namespace Prerender.io
 		/// </summary>
 		/// <param name="useDefaultUserAgents">Whether to preload default user agents or only load whats in the web.config</param>
 		/// <param name="useDefaultExtensionsToIgnore">Whether to preload extensions to ignore or only load whats in the web.config</param>
-		/// <param name="headersToIgnoreInResponse">A collection of headers to exclude from the Prerender.IO response</param>
-		public PrerenderIoAttribute(bool useDefaultUserAgents, bool useDefaultExtensionsToIgnore, IEnumerable<string> headersToIgnoreInResponse = null)
+		public PrerenderIoAttribute(bool useDefaultUserAgents, bool useDefaultExtensionsToIgnore)
 		{
 			UseDefaultUserAgents = useDefaultUserAgents;
 			UseDefaultExtensionsToIgnore = useDefaultExtensionsToIgnore;
-			HeadersToExcludeInResponse = headersToIgnoreInResponse;
 		}
 
 		/// <summary>
@@ -37,15 +35,17 @@ namespace Prerender.io
 		/// </summary>
 		public override void OnActionExecuting(ActionExecutingContext filterContext)
 		{
-			_prerenderIoCommon = new PrerenderIoCommon(UseDefaultUserAgents, UseDefaultExtensionsToIgnore, HeadersToExcludeInResponse);
+			_prerenderIoCommon = new PrerenderIoCommon(UseDefaultUserAgents, UseDefaultExtensionsToIgnore);
 
 			var request = filterContext.RequestContext.HttpContext.Request;
 			var referer = request.UrlReferrer == null ? string.Empty : request.UrlReferrer.AbsoluteUri;
 
-			if (_prerenderIoCommon.ShouldShowPrerenderedPage(request.Url, request.QueryString, request.UserAgent, referer))
+			var url = new Uri("http://grimdawn.com"); // request.Url
+
+			if (_prerenderIoCommon.ShouldShowPrerenderedPage(url, request.QueryString, request.UserAgent, referer))
 			{
 				// Start Prerender here.
-				var result = _prerenderIoCommon.GetPrerenderedPageResponse(request.Url, request.UserAgent);
+				var result = _prerenderIoCommon.GetPrerenderedPageResponse(url, request.UserAgent);
 
 				filterContext.HttpContext.Response.StatusCode = (int)result.StatusCode;
 				_prerenderIoCommon.WriteHeaders(filterContext.HttpContext.Response.Headers, result.Headers);
@@ -71,10 +71,5 @@ namespace Prerender.io
 		/// This indicates whether to load the hard coded Extensions to Ignore or only use the ones on the web.config file
 		/// </summary>
 		public bool UseDefaultExtensionsToIgnore { get; set; }
-
-		/// <summary>
-		/// A collection of headers to exclude from the Prerender.IO response
-		/// </summary>
-		public IEnumerable<string> HeadersToExcludeInResponse { get; set; }
 	}
 }

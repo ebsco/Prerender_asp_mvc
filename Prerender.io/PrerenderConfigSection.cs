@@ -143,5 +143,27 @@ namespace Prerender.io
                 this["token"] = value;
             }
         }
+
+	   public IEnumerable<String> HeadersToExclude
+	   {
+		   get
+		   {
+			   return HeadersToExcludeString.IsBlank() ? null : HeadersToExcludeString.Trim().Split(',');
+		   }
+	   }
+
+
+	   [ConfigurationProperty("headersToExclude")]
+	   public String HeadersToExcludeString
+	   {
+		   get
+		   {
+			   return (String)this["headersToExclude"];
+		   }
+		   set
+		   {
+			   this["headersToExclude"] = value;
+		   }
+	   }
     }
 }

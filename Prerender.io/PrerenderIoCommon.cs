@@ -19,21 +19,16 @@ namespace Prerender.io
 		private const string ESCAPED_FRAGMENT = "_escaped_fragment_";
 
 		private PrerenderConfigSection _prerenderConfig;
-		private List<string> _headerTypesToIgnore = new List<string>();
 
 		/// <summary>
 		/// This will create the object that does the bulk of the Prerender.IO Work
 		/// </summary>
 		/// <param name="useDefaultUserAgents">Whether to preload default user agents or only load whats in the web.config</param>
 		/// <param name="useDefaultExtensionsToIgnore">Whether to preload extensions to ignore or only load whats in the web.config</param>
-		/// <param name="headersToExcludeInResponse">Any headers that are coming back from the response we want to exclude in the response</param>
-		internal PrerenderIoCommon(bool useDefaultUserAgents, bool useDefaultExtensionsToIgnore, IEnumerable<string> headersToExcludeInResponse = null)
+		internal PrerenderIoCommon(bool useDefaultUserAgents, bool useDefaultExtensionsToIgnore)
 		{
 			UseDefaultUserAgents = useDefaultUserAgents;
 			UseDefaultExtensionsToIgnore = useDefaultExtensionsToIgnore;
-
-			if (headersToExcludeInResponse != null)
-				_headerTypesToIgnore.AddRange(headersToExcludeInResponse);
 
 			_prerenderConfig = ConfigurationManager.GetSection(PRERENDER_SECTION_KEY) as PrerenderConfigSection;
 		}
@@ -126,6 +121,11 @@ namespace Prerender.io
 		/// <param name="sourceHeaders">The headers recieved from the response from Prerender.IO</param>
 		internal void WriteHeaders(NameValueCollection headerCollection, WebHeaderCollection sourceHeaders)
 		{
+			var headersToIgnore = new List<string>();
+
+			if (_prerenderConfig.HeadersToExclude != null)
+				headersToIgnore.AddRange(_prerenderConfig.HeadersToExclude);
+
 			for (var i = 0; i < sourceHeaders.Count; ++i)
 			{
 				var header = sourceHeaders.GetKey(i);
@@ -134,7 +134,7 @@ namespace Prerender.io
 				if (values == null) continue;
 
 				// Make sure we aren't sending back any headers we don't want.
-				if( _headerTypesToIgnore.Any(h => h == header))
+				if (headersToIgnore.Any(h => h == header))
 					continue;
 
 				foreach (var value in values)

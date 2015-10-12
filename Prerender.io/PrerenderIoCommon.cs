@@ -19,16 +19,21 @@ namespace Prerender.io
 		private const string ESCAPED_FRAGMENT = "_escaped_fragment_";
 
 		private PrerenderConfigSection _prerenderConfig;
+		private List<string> _headerTypesToIgnore = new List<string>();
 
 		/// <summary>
 		/// This will create the object that does the bulk of the Prerender.IO Work
 		/// </summary>
 		/// <param name="useDefaultUserAgents">Whether to preload default user agents or only load whats in the web.config</param>
 		/// <param name="useDefaultExtensionsToIgnore">Whether to preload extensions to ignore or only load whats in the web.config</param>
-		internal PrerenderIoCommon(bool useDefaultUserAgents, bool useDefaultExtensionsToIgnore)
+		/// <param name="headersToExcludeInResponse">Any headers that are coming back from the response we want to exclude in the response</param>
+		internal PrerenderIoCommon(bool useDefaultUserAgents, bool useDefaultExtensionsToIgnore, IEnumerable<string> headersToExcludeInResponse = null)
 		{
 			UseDefaultUserAgents = useDefaultUserAgents;
 			UseDefaultExtensionsToIgnore = useDefaultExtensionsToIgnore;
+
+			if (headersToExcludeInResponse != null)
+				_headerTypesToIgnore.AddRange(headersToExcludeInResponse);
 
 			_prerenderConfig = ConfigurationManager.GetSection(PRERENDER_SECTION_KEY) as PrerenderConfigSection;
 		}
@@ -39,7 +44,7 @@ namespace Prerender.io
 		/// <param name="apiUrl">The URI of the application to retrieve</param>
 		/// <param name="userAgent">The user agent to send.</param>
 		/// <returns>The response of the request</returns>
-		internal ResponseResult GetPrerenderedPageResponse(string apiUrl, string userAgent)
+		internal ResponseResult GetPrerenderedPageResponse(Uri apiUrl, string userAgent)
 		{
 			var webRequest = (HttpWebRequest)WebRequest.Create(apiUrl);
 			webRequest.Method = "GET";
@@ -110,8 +115,33 @@ namespace Prerender.io
 				return false;
 			}
 
-			return true;
+			return false;
 
+		}
+
+		/// <summary>
+		/// The WebHeaderCollection is horrible, so we enumerate like this! We are adding the received headers from the prerender service
+		/// </summary>
+		/// <param name="headerCollection">The header collection to write the headers to.</param>
+		/// <param name="sourceHeaders">The headers recieved from the response from Prerender.IO</param>
+		internal void WriteHeaders(NameValueCollection headerCollection, WebHeaderCollection sourceHeaders)
+		{
+			for (var i = 0; i < sourceHeaders.Count; ++i)
+			{
+				var header = sourceHeaders.GetKey(i);
+				var values = sourceHeaders.GetValues(i);
+
+				if (values == null) continue;
+
+				// Make sure we aren't sending back any headers we don't want.
+				if( _headerTypesToIgnore.Any(h => h == header))
+					continue;
+
+				foreach (var value in values)
+				{
+					headerCollection.Add(header, value);
+				}
+			}
 		}
 
 		/// <summary>

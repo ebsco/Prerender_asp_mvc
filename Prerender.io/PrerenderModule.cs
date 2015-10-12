@@ -55,24 +55,10 @@ namespace Prerender.io
 
 		  if (_prerenderIoCommon.ShouldShowPrerenderedPage(request.Url, request.QueryString, request.UserAgent, referer))
             {
-			  var result = _prerenderIoCommon.GetPrerenderedPageResponse(request.Url.AbsoluteUri, request.UserAgent);
+			  var result = _prerenderIoCommon.GetPrerenderedPageResponse(request.Url, request.UserAgent);
 
                 response.StatusCode = (int)result.StatusCode;
-
-                // The WebHeaderCollection is horrible, so we enumerate like this!
-                // We are adding the received headers from the prerender service
-                for (var i = 0; i < result.Headers.Count; ++i)
-                {
-                    var header = result.Headers.GetKey(i);
-                    var values = result.Headers.GetValues(i);
-
-                    if (values == null) continue;
-
-                    foreach (var value in values)
-                    {
-                        response.Headers.Add(header, value);
-                    }
-                }
+			 _prerenderIoCommon.WriteHeaders(response.Headers, result.Headers);
       
                 response.Write(result.ResponseBody);
                 response.Flush();

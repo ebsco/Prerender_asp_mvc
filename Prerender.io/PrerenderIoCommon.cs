@@ -36,11 +36,15 @@ namespace Prerender.io
 		/// <summary>
 		/// This will retrieve the Prerender.IO page.
 		/// </summary>
-		/// <param name="apiUrl">The URI of the application to retrieve</param>
+		/// <param name="applicationUrl">The URI of the application to retrieve</param>
 		/// <param name="userAgent">The user agent to send.</param>
+		/// <param name="headers">The headers for hte request.</param>
+		/// <param name="applicationPath">The Request.ApplicationPath</param>
 		/// <returns>The response of the request</returns>
-		internal ResponseResult GetPrerenderedPageResponse(Uri apiUrl, string userAgent)
+		internal ResponseResult GetPrerenderedPageResponse(Uri applicationUrl, string userAgent, NameValueCollection headers, string applicationPath)
 		{
+			var apiUrl = GetApiUrl(applicationUrl, headers, applicationPath);
+
 			var webRequest = (HttpWebRequest)WebRequest.Create(apiUrl);
 			webRequest.Method = "GET";
 			webRequest.UserAgent = userAgent;
@@ -199,6 +203,37 @@ namespace Prerender.io
 		private bool IsInWhiteList(Uri url, IEnumerable<string> whiteList)
 		{
 			return whiteList.Any(item => new Regex(item).IsMatch(url.AbsoluteUri));
+		}
+
+		/// <summary>
+		/// This will build the API URL.
+		/// </summary>
+		/// <param name="requestedPath">The URL requested</param>
+		/// <param name="headers">The header collection</param>
+		/// <param name="applicationPath">The application path</param>
+		/// <returns>a constructed URL to call Prerender.IO.</returns>
+		private string GetApiUrl(Uri requestedPath, NameValueCollection headers, string applicationPath)
+		{
+			var url = requestedPath.AbsoluteUri;
+
+			// Correct for HTTPS if that is what the request arrived at the load balancer as 
+			// (AWS and some other load balancers hide the HTTPS from us as we terminate SSL at the load balancer!)
+			if (string.Equals(headers["X-Forwarded-Proto"], "https", StringComparison.InvariantCultureIgnoreCase))
+			{
+				url = url.Replace("http", "https");
+			}
+
+			// Remove the application from the URL
+			if (_prerenderConfig.StripApplicationNameFromRequestUrl && !string.IsNullOrEmpty(applicationPath) && applicationPath != "/")
+			{
+				// http://test.com/MyApp/?_escape_=/somewhere
+				url = url.Replace(applicationPath, string.Empty);
+			}
+
+			var prerenderServiceUrl = _prerenderConfig.PrerenderServiceUrl;
+			return prerenderServiceUrl.EndsWith("/")
+			    ? (prerenderServiceUrl + url)
+			    : string.Format("{0}/{1}", prerenderServiceUrl, url);
 		}
 
 		#region User Agent

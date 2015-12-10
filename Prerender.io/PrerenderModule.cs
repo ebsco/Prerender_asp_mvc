@@ -1,12 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Web;
 
 namespace Prerender.io
@@ -20,6 +13,17 @@ namespace Prerender.io
 	   {
 		   UseDefaultUserAgents = true;
 		   UseDefaultExtensionsToIgnore = true;
+	   }
+
+	   /// <summary>
+	   /// Constructor that specifies whether to use the default agents & extensions to ignore.
+	   /// </summary>
+	   /// <param name="useDefaultUserAgents">Whether to preload default user agents or only load whats in the web.config</param>
+	   /// <param name="useDefaultExtensionsToIgnore">Whether to preload extensions to ignore or only load whats in the web.config</param>
+	   public PrerenderModule(bool useDefaultUserAgents, bool useDefaultExtensionsToIgnore)
+	   {
+		   UseDefaultUserAgents = useDefaultUserAgents;
+		   UseDefaultExtensionsToIgnore = useDefaultExtensionsToIgnore;
 	   }
 
         public void Dispose()
@@ -55,7 +59,7 @@ namespace Prerender.io
 
 		  if (_prerenderIoCommon.ShouldShowPrerenderedPage(request.Url, request.QueryString, request.UserAgent, referer))
             {
-			  var result = _prerenderIoCommon.GetPrerenderedPageResponse(request.Url, request.UserAgent);
+			  var result = _prerenderIoCommon.GetPrerenderedPageResponse(request.Url, request.UserAgent, request.Headers, request.ApplicationPath);
 
                 response.StatusCode = (int)result.StatusCode;
 			 _prerenderIoCommon.WriteHeaders(response.Headers, result.Headers);
@@ -69,11 +73,11 @@ namespace Prerender.io
 	   /// <summary>
 	   /// This indicates whether to load the hard coded default User Agents or only use the ones on the web.config file
 	   /// </summary>
-	   public bool UseDefaultUserAgents { get; private set; }
+	   public bool UseDefaultUserAgents { get; set; }
 
 	   /// <summary>
 	   /// This indicates whether to load the hard coded Extensions to Ignore or only use the ones on the web.config file
 	   /// </summary>
-	   public bool UseDefaultExtensionsToIgnore { get; private set; }
+	   public bool UseDefaultExtensionsToIgnore { get; set; }
     }
 }

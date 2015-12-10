@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Web.Mvc;
 
@@ -8,6 +6,9 @@ namespace Prerender.io
 {
 	/// <summary>
 	/// This Attribute is designed to attach to a Method to check a specific MVC Endpoint.
+	/// <remarks>
+	/// This class is intentially left un-sealed as it can be inhereted to perform more/additional items before/after Prerender.IO runs.
+	/// </remarks> 
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Method)]
 	public class PrerenderIoAttribute : ActionFilterAttribute
@@ -40,12 +41,10 @@ namespace Prerender.io
 			var request = filterContext.RequestContext.HttpContext.Request;
 			var referer = request.UrlReferrer == null ? string.Empty : request.UrlReferrer.AbsoluteUri;
 
-			var url = new Uri("http://grimdawn.com"); // request.Url
-
-			if (_prerenderIoCommon.ShouldShowPrerenderedPage(url, request.QueryString, request.UserAgent, referer))
+			if (_prerenderIoCommon.ShouldShowPrerenderedPage(request.Url, request.QueryString, request.UserAgent, referer))
 			{
 				// Start Prerender here.
-				var result = _prerenderIoCommon.GetPrerenderedPageResponse(url, request.UserAgent);
+				var result = _prerenderIoCommon.GetPrerenderedPageResponse(request.Url, request.UserAgent, filterContext.HttpContext.Response.Headers, request.ApplicationPath);
 
 				filterContext.HttpContext.Response.StatusCode = (int)result.StatusCode;
 				_prerenderIoCommon.WriteHeaders(filterContext.HttpContext.Response.Headers, result.Headers);
@@ -61,6 +60,8 @@ namespace Prerender.io
 
 			base.OnActionExecuting(filterContext);
 		}
+
+		
 
 		/// <summary>
 		/// This indicates whether to load the hard coded default User Agents or only use the ones on the web.config file
